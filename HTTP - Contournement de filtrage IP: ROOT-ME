@@ -1,0 +1,18 @@
+HTTP - Contournement de filtrage IP
+
+Objectif
+Accéder à une page intranet restreinte en contournant un filtrage basé sur l'adresse IP de l'utilisateur. Le serveur n'autorise que les connexions provenant du réseau local (LAN).
+
+Résolution
+
+1. Analyse du mécanisme : L'application web détermine l'adresse IP du client en faisant confiance aux en-têtes HTTP envoyés par les proxys inverses ou les équilibreurs de charge.
+
+2. Choix de l'en-tête : L'en-tête standard pour relayer l'IP d'origine est X-Forwarded-For.
+
+3. Exploitation (Spoofing IP) : En utilisant un outil comme cURL ou un modificateur d'en-têtes sur le navigateur, on injecte cet en-tête. L'énoncé pointait vers la RFC 1918, qui définit les plages d'adresses privées (ex: 10.0.0.0/8, 192.168.0.0/16).
+
+Commande finale : L'utilisation d'une adresse de classe A locale (10.0.0.1) permet de tromper le script de vérification :
+
+curl -H "X-Forwarded-For: 10.0.0.1" http://challenge01.root-me.org/web-serveur/ch68/
+
+Extraction du flag : Le serveur, pensant que la requête provient bien de l'intranet, retourne le contenu de la page secrète contenant le mot de passe de validation.
