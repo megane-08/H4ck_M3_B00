@@ -1,0 +1,51 @@
+
+Objectif
+
+Contourner un mécanisme de validation par signature cryptographique afin de forcer une redirection vers un site externe non autorisé (`https://google.com`) et ainsi obtenir le flag de validation.
+
+---
+
+Analyse de la cible
+
+En cliquant sur l'un des réseaux sociaux proposés (par exemple, *Facebook*), on intercepte une requête HTTP dont l'URL est structurée avec deux paramètres clés :
+
+* `url` : La destination de la redirection (ex: `https://facebook.com`).
+* `h` : Une signature de sécurité au format hexadécimal (ex: `a023cfbf5f1c39bdf8407f28b60cd134`).
+
+Si l'on tente de modifier simplement le paramètre `url` par `https://google.com`, le serveur bloque la requête et affiche un message d'erreur : **"Incorrect hash"**.
+
+---
+
+Résolution & Exploitation
+
+Étape 1 : Analyse de la signature (`h`)
+
+La signature de 32 caractères correspond au format d'un hash **MD5**. En utilisant un outil de correspondance inversée (comme *md5hashing.net*), on découvre que le hash `a023cfbf5f1c39bdf8407f28b60cd134` est le résultat direct de la chaîne : `https://facebook.com`.
+
+**Constat de vulnérabilité :** Le serveur vérifie l'intégrité de l'URL en recalculant son MD5, mais il n'utilise aucun "sel" secret (Salt). N'importe qui peut donc forger une signature valide pour n'importe quelle URL arbitraire.
+
+Étape 2 : Forgeage du Payload
+
+Pour rediriger vers `https://google.com`, il suffit de générer le hash MD5 correspondant à cette chaîne exacte :
+
+$$\text{md5}("[https://google.com](https://google.com)") = 99999ebcfdb78df077ad2727fd00969f$$
+
+Étape 3 : Injection et Capture du Flag
+
+À l'aide de **Burp Suite** (ou directement en modifiant l'URL dans la barre d'adresse du navigateur), on transmet les nouveaux paramètres falsifiés au serveur :
+
+```text
+http://challenge01.root-me.org/web-serveur/ch52/?url=https://google.com&h=99999ebcfdb78df077ad2727fd00969f
+
+```
+
+**Résultat :** Le serveur calcule le MD5 de `https://google.com`, constate qu'il correspond exactement au paramètre `h` fourni, valide la cohérence et affiche le flag sur la page avant d'exécuter la redirection.
+
+---
+
+ Remédiation (Sécurisation)
+
+Pour corriger définitivement cette faille, le développeur aurait dû appliquer l'une de ces deux méthodes :
+
+1. **La Liste Blanche (Whitelisting) :** Restreindre strictement les redirections vers un tableau de domaines explicitement autorisés (ex: uniquement `facebook.com`, `twitter.com`, `slack.com`).
+2. **L'utilisation d'un HMAC (Hash avec clé secrète) :** Si une signature est requise, intégrer une clé secrète connue du serveur seul lors du hachage ($\text{md5}(\text{"CleSecrete"} + \text{URL})$) pour empêcher les utilisateurs de générer eux-mêmes des signatures valides.
